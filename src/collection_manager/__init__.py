@@ -2,10 +2,9 @@
 Collection Manager - Safe Plex collection creation and management
 
 Based on Kometa patterns (MIT License)
+Incorporates code from Kometa-Team/Kometa
 """
 
-# TODO: Implement collection manager
-# - Decade collections
-# - Top list collections
-# - Studio collections
-# - Safe atomic operations with rollback
+from .manager import CollectionManager
+
+__all__ = ['CollectionManager']
