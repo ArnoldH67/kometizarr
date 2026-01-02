@@ -75,6 +75,21 @@ class PosterBackupManager:
         original_path = backup_path / 'poster_original.jpg'
         return original_path.exists()
 
+    def has_overlay(self, library_name: str, item_title: str) -> bool:
+        """
+        Check if overlay version exists (item already processed)
+
+        Args:
+            library_name: Plex library name
+            item_title: Item title
+
+        Returns:
+            True if overlay backup exists
+        """
+        backup_path = self._get_backup_path(library_name, item_title)
+        overlay_path = backup_path / 'poster_overlay.jpg'
+        return overlay_path.exists()
+
     def backup_poster(
         self,
         library_name: str,

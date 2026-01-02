@@ -133,7 +133,7 @@ class PlexPosterManager:
         movie,
         position: str = 'northwest',
         force: bool = False
-    ) -> bool:
+    ) -> Optional[bool]:
         """
         Process a single movie: backup, overlay, upload
 
@@ -143,7 +143,9 @@ class PlexPosterManager:
             force: Force reprocessing even if already has overlay
 
         Returns:
-            True if successful
+            True if successfully processed
+            None if skipped (already has overlay)
+            False if failed
         """
         try:
             # Extract IDs - TMDB ID is optional (many TV shows don't have it)
@@ -155,9 +157,10 @@ class PlexPosterManager:
                 logger.warning(f"⚠️  {movie.title}: No TMDB or IMDb ID found")
                 return False
 
-            # Note: We don't skip based on backup existence anymore
-            # The backup_manager.backup_poster() handles not re-downloading if backup exists
-            # This allows re-processing after restoration without needing force=True
+            # Skip if overlay already applied (unless force=True)
+            if not force and self.backup_manager.has_overlay(self.library_name, movie.title):
+                logger.debug(f"⏭️  {movie.title}: Already has overlay, skipping")
+                return None  # Return None to indicate skip (not success or failure)
 
             # PRIORITY 1: Try to get ALL ratings from Plex's own metadata FIRST (fastest, most reliable)
             # This works for both movies AND TV shows and has ~100% coverage
@@ -325,15 +328,16 @@ class PlexPosterManager:
 
             result = self.process_movie(movie, position=position, force=force)
 
-            # Update progress
-            if result:
+            # Update progress based on result
+            if result is None:
+                # None = skipped (already has overlay)
+                progress.update(skipped=True)
+            elif result:
+                # True = success
                 progress.update(success=True)
             else:
-                # Check if skipped or failed
-                if not force and self.backup_manager.has_backup(self.library_name, movie.title):
-                    progress.update(skipped=True)
-                else:
-                    progress.update(success=False)
+                # False = failed
+                progress.update(success=False)
 
             # Show current stats
             print(f"  {progress.get_stats_str()}")

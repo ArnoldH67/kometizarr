@@ -218,7 +218,10 @@ async def process_library_background(request: ProcessRequest):
 
             result = manager.process_movie(item, position=request.position, force=request.force)
 
-            if result:
+            # Handle three-state return: True=success, None=skip, False=fail
+            if result is None:
+                processing_state["skipped"] += 1
+            elif result:
                 processing_state["success"] += 1
             else:
                 processing_state["failed"] += 1
