@@ -62,6 +62,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Project progress tracking (personal notes)
+kometizarr_progress.md
+
 # Terraform
 terraform/.terraform/
 terraform/*.tfstate
