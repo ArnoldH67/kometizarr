@@ -105,6 +105,44 @@ function Collections({ selectedLibrary }) {
     }
   }
 
+  const createKeywordCollections = async () => {
+    if (!selectedLibrary) return
+
+    setCreating(true)
+    try {
+      const keywords = [
+        { title: 'Zombies', keywords: ['zombie', 'zombies', 'undead'] },
+        { title: 'Time Travel', keywords: ['time travel', 'time machine', 'time loop'] },
+        { title: 'Superheroes', keywords: ['superhero', 'superheroes', 'comic book'] },
+        { title: 'Space Adventure', keywords: ['space', 'outer space', 'spacecraft', 'astronaut'] },
+        { title: 'Heist', keywords: ['heist', 'robbery', 'bank robbery', 'casino'] },
+        { title: 'Dinosaurs', keywords: ['dinosaur', 'dinosaurs', 'prehistoric'] }
+      ]
+
+      const res = await fetch('/api/collections/keyword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          library_name: selectedLibrary.name,
+          keywords
+        })
+      })
+
+      const data = await res.json()
+      if (data.status === 'success') {
+        alert(`Created ${data.created} keyword collections!`)
+        fetchCollections()
+      } else {
+        alert(`Error: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Failed to create keyword collections:', error)
+      alert('Failed to create keyword collections')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   if (!selectedLibrary) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -118,7 +156,7 @@ function Collections({ selectedLibrary }) {
       {/* Quick Actions */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h2 className="text-xl font-semibold mb-4">Create Collections</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={createDecadeCollections}
             disabled={creating}
@@ -132,6 +170,13 @@ function Collections({ selectedLibrary }) {
             className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition"
           >
             🎬 Create Studio Collections
+          </button>
+          <button
+            onClick={createKeywordCollections}
+            disabled={creating}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition"
+          >
+            🔍 Create Keyword Collections
           </button>
         </div>
         {creating && (
