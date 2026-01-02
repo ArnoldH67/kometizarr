@@ -4,7 +4,7 @@
 
 Kometizarr automatically adds gorgeous multi-source rating badges to your Plex movie and TV show posters. No more messy YAML configs, no database risks, just clean Python that works.
 
-![Kometizarr Demo](docs/demo.png)
+![Kometizarr Demo](docs/the_dark_knight.jpg)
 
 ## ✨ Features
 
@@ -43,14 +43,14 @@ Kometizarr automatically adds gorgeous multi-source rating badges to your Plex m
 
 ### Rating Overlay Examples
 
-**Movie with High Scores:**
-- The Dark Knight: TMDB 8.5, IMDb 9.1, RT 94% (fresh tomato), RT Audience 94% (standing popcorn)
+**High Rated Movie** - The Dark Knight
+![The Dark Knight](docs/the_dark_knight.jpg)
 
-**Movie with Mixed Scores:**
-- 2 Fast 2 Furious: TMDB 6.5, IMDb 5.9, RT 37% (rotten splat), RT Audience 50% (spilled popcorn)
+**Mixed Ratings** - 2 Fast 2 Furious
+![2 Fast 2 Furious](docs/2_fast_2_furious.jpg)
 
-**TV Show:**
-- The 100: TMDB 7.9, IMDb 7.5, RT 93% (fresh tomato), RT Audience 68% (fresh popcorn)
+**Popular Movie** - Inception
+![Inception](docs/inception.jpg)
 
 > **Dynamic Logo System:** RT logos automatically change based on score:
 > - **Critic ≥60%:** Fresh tomato 🍅 | **<60%:** Rotten splat 💥
