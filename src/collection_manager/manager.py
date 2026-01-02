@@ -124,8 +124,8 @@ class CollectionManager:
             # Set visibility (hide collection from library if visible=False)
             if not visible:
                 try:
-                    # Mode 1 = hide collection from library
-                    collection.modeUpdate(mode=1)
+                    # 'hide' = hide from library view, show in recommended/search
+                    collection.modeUpdate(mode='hide')
                     logger.info(f"  Set collection to hidden from library")
                 except Exception as e:
                     logger.warning(f"  Could not hide collection: {e}")

@@ -146,27 +146,18 @@ class PlexPosterManager:
             True if successful
         """
         try:
-            # Extract TMDB ID
+            # Extract IDs - TMDB ID is optional (many TV shows don't have it)
             tmdb_id = self._extract_tmdb_id(movie.guids)
-            if not tmdb_id:
-                logger.warning(f"⚠️  {movie.title}: No TMDB ID found")
+            imdb_id = self._extract_imdb_id(movie.guids)
+
+            # Need at least one ID to proceed
+            if not tmdb_id and not imdb_id:
+                logger.warning(f"⚠️  {movie.title}: No TMDB or IMDb ID found")
                 return False
 
-            # Check if already backed up (skip if force=False)
-            if not force and self.backup_manager.has_backup(self.library_name, movie.title):
-                logger.debug(f"⏭️  {movie.title}: Already processed (use force=True to reprocess)")
-                return False
-
-            # If force=True and backup exists, restore original poster first before applying new overlay
-            # This prevents double overlays and ensures we get fresh ratings
-            if force and self.backup_manager.has_backup(self.library_name, movie.title):
-                logger.info(f"🔄 {movie.title}: Restoring original poster before reprocessing")
-                if not self.backup_manager.restore_original(self.library_name, movie.title, movie):
-                    logger.warning(f"⚠️  {movie.title}: Failed to restore original, skipping reprocess")
-                    return False
-                # Small delay to ensure Plex updates the poster URL
-                import time
-                time.sleep(1)
+            # Note: We don't skip based on backup existence anymore
+            # The backup_manager.backup_poster() handles not re-downloading if backup exists
+            # This allows re-processing after restoration without needing force=True
 
             # PRIORITY 1: Try to get ALL ratings from Plex's own metadata FIRST (fastest, most reliable)
             # This works for both movies AND TV shows and has ~100% coverage
@@ -178,22 +169,15 @@ class PlexPosterManager:
             # Use Plex's TMDB rating if available
             if 'tmdb' in plex_ratings:
                 ratings['tmdb'] = plex_ratings['tmdb']
-            else:
+            elif tmdb_id:  # Only try TMDB API if we have a TMDB ID
                 # PRIORITY 2: Fall back to TMDB API only if Plex doesn't have it
                 # Determine media type (movie vs TV show)
                 media_type = 'tv' if self.library.type == 'show' else 'movie'
                 rating_data = self.rating_fetcher.fetch_tmdb_rating(tmdb_id, media_type=media_type)
 
-                if not rating_data:
-                    logger.warning(f"⚠️  {movie.title}: Failed to fetch TMDB rating")
-                    return False
-
-                tmdb_rating = rating_data['rating']
-                if tmdb_rating == 0:
-                    logger.warning(f"⚠️  {movie.title}: No TMDB rating available (0.0)")
-                    return False
-
-                ratings['tmdb'] = tmdb_rating
+                if rating_data and rating_data.get('rating', 0) > 0:
+                    ratings['tmdb'] = rating_data['rating']
+                # Don't fail here - continue to check other rating sources
 
             # Use Plex's IMDb rating if available
             if 'imdb' in plex_ratings:
@@ -205,8 +189,7 @@ class PlexPosterManager:
             if 'rt_audience' in plex_ratings:
                 ratings['rt_audience'] = plex_ratings['rt_audience']
 
-            # PRIORITY 2: Fall back to API calls for missing ratings
-            imdb_id = self._extract_imdb_id(movie.guids)
+            # PRIORITY 2: Fall back to API calls for missing ratings (already extracted imdb_id above)
             if imdb_id:
                 # Get IMDb rating from OMDb if not already from Plex
                 if 'imdb' not in ratings:
@@ -225,6 +208,11 @@ class PlexPosterManager:
                             ratings['rt_critic'] = mdb_data['rt_critic']
                         if 'rt_audience' not in ratings and mdb_data.get('rt_audience'):
                             ratings['rt_audience'] = mdb_data['rt_audience']
+
+            # Check if we have ANY ratings - fail only if all sources are empty/zero
+            if not ratings or all(v == 0 for v in ratings.values()):
+                logger.warning(f"⚠️  {movie.title}: No ratings available from any source")
+                return False
 
             logger.info(f"Processing: {movie.title} (Ratings: {ratings})")
 
@@ -248,13 +236,15 @@ class PlexPosterManager:
                 'ratings': ratings
             }
 
+            # Get or create backup (never re-download if backup exists)
+            # When force=True, we just use existing backup to apply fresh overlay
             original_path = self.backup_manager.backup_poster(
                 library_name=self.library_name,
                 item_title=movie.title,
                 poster_url=poster_url,
                 item_metadata=metadata,
                 plex_token=self.plex_token,
-                force=force
+                force=False  # Never re-download - use existing backup
             )
 
             if not original_path:

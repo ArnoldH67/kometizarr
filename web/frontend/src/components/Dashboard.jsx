@@ -7,6 +7,7 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
   const [loading, setLoading] = useState(true)
   const [position, setPosition] = useState('northwest')
   const [force, setForce] = useState(false)
+  const [restoringOriginals, setRestoringOriginals] = useState(false)
 
   useEffect(() => {
     fetchLibraries()
@@ -71,6 +72,39 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
     }
   }
 
+  const restoreOriginals = async () => {
+    if (!selectedLibrary) return
+
+    if (!confirm(`Restore all original posters in ${selectedLibrary.name}? This will remove all overlays.`)) {
+      return
+    }
+
+    setRestoringOriginals(true)
+
+    try {
+      const res = await fetch('/api/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          library_name: selectedLibrary.name,
+        }),
+      })
+
+      const data = await res.json()
+      if (data.status === 'success') {
+        alert(`Restored ${data.restored} posters, ${data.failed} failed, ${data.skipped} skipped (no backup)`)
+        fetchStats(selectedLibrary.name)
+      } else {
+        alert(`Error: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Failed to restore originals:', error)
+      alert('Failed to restore originals')
+    } finally {
+      setRestoringOriginals(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -116,13 +150,13 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
               <div className="text-3xl font-bold mt-1">{stats.total_items}</div>
             </div>
             <div className="bg-gray-900 rounded-lg p-4">
-              <div className="text-gray-400 text-sm">Processed</div>
+              <div className="text-gray-400 text-sm">With Backups</div>
               <div className="text-3xl font-bold mt-1 text-green-400">
                 {stats.processed_items}
               </div>
             </div>
             <div className="bg-gray-900 rounded-lg p-4">
-              <div className="text-gray-400 text-sm">Success Rate</div>
+              <div className="text-gray-400 text-sm">Backup Coverage</div>
               <div className="text-3xl font-bold mt-1 text-blue-400">
                 {stats.success_rate}%
               </div>
@@ -160,23 +194,32 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
               id="force-checkbox"
             />
             <label htmlFor="force-checkbox" className="text-sm">
-              Force reprocess (resets posters before re-applying overlays with fresh ratings)
+              Force reprocess (re-applies overlays with fresh ratings using backed up originals)
             </label>
           </div>
           {force && (
             <div className="mt-2 p-3 bg-blue-900/20 border border-blue-700/50 rounded text-sm text-blue-300">
-              ℹ️ Restores original posters from backup, then applies fresh overlays with updated ratings.
+              ℹ️ Uses original posters from backup to apply fresh overlays with updated ratings. Original backups are never overwritten.
             </div>
           )}
 
-          {/* Start Button */}
-          <button
-            onClick={startProcessing}
-            disabled={!selectedLibrary}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition"
-          >
-            Start Processing {selectedLibrary?.name}
-          </button>
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={restoreOriginals}
+              disabled={!selectedLibrary || restoringOriginals}
+              className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition"
+            >
+              {restoringOriginals ? '⏳ Restoring...' : `🔄 Restore ${selectedLibrary?.name}`}
+            </button>
+            <button
+              onClick={startProcessing}
+              disabled={!selectedLibrary || restoringOriginals}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition"
+            >
+              ▶️ Process {selectedLibrary?.name}
+            </button>
+          </div>
         </div>
       </div>
     </div>

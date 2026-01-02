@@ -139,6 +139,52 @@ async def start_processing(request: ProcessRequest):
     return {"status": "started", "library": request.library_name}
 
 
+@app.post("/api/restore")
+async def restore_originals(request: ProcessRequest):
+    """Restore original posters from backups"""
+    try:
+        from plexapi.server import PlexServer
+        from src.rating_overlay.backup_manager import PosterBackupManager
+
+        plex_url = os.getenv('PLEX_URL')
+        plex_token = os.getenv('PLEX_TOKEN')
+
+        server = PlexServer(plex_url, plex_token)
+        library = server.library.section(request.library_name)
+
+        backup_manager = PosterBackupManager(backup_dir='/backups')
+
+        # Get all items
+        all_items = library.all()
+        if request.limit:
+            all_items = all_items[:request.limit]
+
+        restored = 0
+        failed = 0
+        skipped = 0
+
+        for item in all_items:
+            if backup_manager.has_backup(request.library_name, item.title):
+                if backup_manager.restore_original(request.library_name, item.title, item):
+                    restored += 1
+                else:
+                    failed += 1
+            else:
+                skipped += 1
+
+        return {
+            "status": "success",
+            "library": request.library_name,
+            "total": len(all_items),
+            "restored": restored,
+            "failed": failed,
+            "skipped": skipped
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
 async def process_library_background(request: ProcessRequest):
     """Background task for processing library"""
     global processing_state
