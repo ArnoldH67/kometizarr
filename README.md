@@ -1,6 +1,6 @@
 # Kometizarr
 
-**Beautiful rating overlays for Plex - Simple, fast, and better than Kometa.**
+**Automated rating overlays and collection management for Plex - Simple, fast, and powerful.**
 
 Kometizarr automatically adds gorgeous multi-source rating badges to your Plex movie and TV show posters. No more messy YAML configs, no database risks, just clean Python that works.
 
