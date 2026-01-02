@@ -68,6 +68,52 @@ class TMDBHelper:
 
         return movie_ids[:limit]
 
+    def get_tv_by_keyword(self, keyword_id: int, limit: int = 500) -> List[int]:
+        """
+        Get TMDB TV show IDs that match a keyword
+
+        Args:
+            keyword_id: TMDB keyword ID (e.g., 12377 for "zombie")
+            limit: Maximum number of results
+
+        Returns:
+            List of TMDB TV show IDs
+        """
+        tv_ids = []
+        page = 1
+
+        while len(tv_ids) < limit:
+            url = f"{self.BASE_URL}/discover/tv"
+            params = {
+                "api_key": self.api_key,
+                "with_keywords": keyword_id,
+                "page": page,
+                "sort_by": "popularity.desc"
+            }
+
+            try:
+                response = requests.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                results = data.get('results', [])
+                if not results:
+                    break
+
+                tv_ids.extend([show['id'] for show in results])
+
+                # Check if there are more pages
+                if page >= data.get('total_pages', 1):
+                    break
+
+                page += 1
+
+            except Exception as e:
+                print(f"Error fetching TV keyword {keyword_id} page {page}: {e}")
+                break
+
+        return tv_ids[:limit]
+
     def get_movies_in_collection(self, collection_id: int) -> List[int]:
         """
         Get TMDB movie IDs in a collection

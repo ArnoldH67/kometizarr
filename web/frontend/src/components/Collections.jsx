@@ -7,6 +7,8 @@ function Collections({ selectedLibrary }) {
   const [showKeywordModal, setShowKeywordModal] = useState(false)
   const [selectedPresets, setSelectedPresets] = useState([])
   const [customKeywords, setCustomKeywords] = useState('')
+  const [expandedCollection, setExpandedCollection] = useState(null)
+  const [collectionItems, setCollectionItems] = useState([])
 
   useEffect(() => {
     if (selectedLibrary) {
@@ -156,6 +158,30 @@ function Collections({ selectedLibrary }) {
     }
   }
 
+  const toggleCollectionExpansion = async (collectionTitle) => {
+    // If clicking the same collection, collapse it
+    if (expandedCollection === collectionTitle) {
+      setExpandedCollection(null)
+      setCollectionItems([])
+      return
+    }
+
+    // Expand new collection
+    setExpandedCollection(collectionTitle)
+    setCollectionItems([]) // Clear previous items
+
+    // Fetch items
+    try {
+      const res = await fetch(`/api/collections/${encodeURIComponent(collectionTitle)}/items?library_name=${selectedLibrary.name}`)
+      const data = await res.json()
+      if (data.items) {
+        setCollectionItems(data.items)
+      }
+    } catch (error) {
+      console.error('Failed to fetch collection items:', error)
+    }
+  }
+
   const createKeywordCollections = async () => {
     if (!selectedLibrary) return
 
@@ -281,30 +307,74 @@ function Collections({ selectedLibrary }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {collections.map((collection) => (
-              <div
-                key={collection.title}
-                className="bg-gray-900 rounded-lg p-4 border border-gray-700 relative group"
-              >
-                <div className="font-semibold text-white pr-8">{collection.title}</div>
-                <div className="text-sm text-gray-400 mt-1">
-                  {collection.count} items
-                </div>
-                {collection.summary && (
-                  <div className="text-xs text-gray-500 mt-2 line-clamp-2">
-                    {collection.summary}
-                  </div>
-                )}
-                {/* Delete button - appears on hover */}
-                <button
-                  onClick={() => deleteCollection(collection.title)}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded"
-                  title="Delete collection"
+            {collections.map((collection) => {
+              const isExpanded = expandedCollection === collection.title
+              return (
+                <div
+                  key={collection.title}
+                  className="bg-gray-900 rounded-lg border border-gray-700 relative group overflow-hidden"
                 >
-                  ✕
-                </button>
-              </div>
-            ))}
+                  {/* Collection Header - Clickable */}
+                  <div
+                    onClick={() => toggleCollectionExpansion(collection.title)}
+                    className="p-4 cursor-pointer hover:bg-gray-800 transition"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="font-semibold text-white pr-8">{collection.title}</div>
+                        <div className="text-sm text-gray-400 mt-1">
+                          {collection.count} items
+                        </div>
+                        {collection.summary && !isExpanded && (
+                          <div className="text-xs text-gray-500 mt-2 line-clamp-2">
+                            {collection.summary}
+                          </div>
+                        )}
+                      </div>
+                      {/* Expand/Collapse Indicator */}
+                      <div className="text-gray-400 text-sm ml-2">
+                        {isExpanded ? '▼' : '▶'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Delete button - appears on hover */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteCollection(collection.title)
+                    }}
+                    className="absolute top-2 right-8 opacity-0 group-hover:opacity-100 transition bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded z-10"
+                    title="Delete collection"
+                  >
+                    ✕
+                  </button>
+
+                  {/* Expanded Items List */}
+                  {isExpanded && (
+                    <div className="border-t border-gray-700 p-4 bg-gray-950 max-h-96 overflow-y-auto">
+                      {collectionItems.length === 0 ? (
+                        <div className="text-gray-500 text-sm">Loading items...</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {collectionItems.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-sm">
+                              <div className="text-gray-300">
+                                {item.title}
+                                {item.year && <span className="text-gray-500 ml-2">({item.year})</span>}
+                              </div>
+                              {item.rating && (
+                                <div className="text-yellow-500 text-xs">★ {item.rating}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

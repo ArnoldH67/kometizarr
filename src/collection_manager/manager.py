@@ -43,12 +43,13 @@ class CollectionManager:
         # Connect to Plex
         self.server = PlexServer(plex_url, plex_token)
         self.library = self.server.library.section(library_name)
+        self.library_type = self.library.type  # 'movie' or 'show'
 
         # Initialize TMDB helper if API key provided
         self.tmdb = TMDBHelper(tmdb_api_key) if tmdb_api_key else None
 
         logger.info(f"Connected to Plex: {self.server.friendlyName}")
-        logger.info(f"Library: {library_name} ({len(self.library.all())} items)")
+        logger.info(f"Library: {library_name} (type: {self.library_type}, {len(self.library.all())} items)")
 
     def get_collection(self, title: str) -> Optional[Collection]:
         """
@@ -307,8 +308,9 @@ class CollectionManager:
         Args:
             keyword_collections: List of keyword configs:
                 [
-                    {"title": "Zombies", "keyword_id": 12377, "description": "Movies featuring the undead"},
-                    {"title": "Time Travel", "keyword_id": 4379}
+                    {"title": "Zombies", "keywords": ["zombie", "zombies", "undead"]},
+                    {"title": "Time Travel", "keyword_id": 4379},
+                    {"title": "South Park", "collection_id": 2961}
                 ]
 
         Returns:
@@ -324,27 +326,51 @@ class CollectionManager:
             title = keyword_config['title']
             keyword_id = keyword_config.get('keyword_id')
             collection_id = keyword_config.get('collection_id')
+            keywords = keyword_config.get('keywords', [])
             description = keyword_config.get('description', '')
             sort_title = keyword_config.get('sort_title', f"!{title}")
 
             logger.info(f"\nProcessing keyword collection: {title}")
 
             # Fetch TMDB IDs
+            tmdb_ids = set()  # Use set to avoid duplicates
+            content_type = "TV shows" if self.library_type == "show" else "movies"
+
             if keyword_id:
-                logger.info(f"  Fetching movies with keyword ID {keyword_id}...")
-                tmdb_ids = self.tmdb.get_movies_by_keyword(keyword_id)
+                logger.info(f"  Fetching {content_type} with keyword ID {keyword_id}...")
+                if self.library_type == "show":
+                    tmdb_ids.update(self.tmdb.get_tv_by_keyword(keyword_id))
+                else:
+                    tmdb_ids.update(self.tmdb.get_movies_by_keyword(keyword_id))
             elif collection_id:
                 logger.info(f"  Fetching TMDB collection {collection_id}...")
-                tmdb_ids = self.tmdb.get_movies_in_collection(collection_id)
+                tmdb_ids.update(self.tmdb.get_movies_in_collection(collection_id))
+            elif keywords:
+                # Search by keyword text (new feature!)
+                logger.info(f"  Searching keywords: {', '.join(keywords)}")
+                for keyword_text in keywords:
+                    # Search for keyword ID
+                    found_id = self.tmdb.search_keyword(keyword_text)
+                    if found_id:
+                        logger.info(f"    Found keyword '{keyword_text}' -> ID {found_id}")
+                        if self.library_type == "show":
+                            items = self.tmdb.get_tv_by_keyword(found_id)
+                        else:
+                            items = self.tmdb.get_movies_by_keyword(found_id)
+                        tmdb_ids.update(items)
+                    else:
+                        logger.warning(f"    Keyword '{keyword_text}' not found in TMDB")
             else:
-                logger.warning(f"No keyword_id or collection_id specified for '{title}'")
+                logger.warning(f"No keyword_id, collection_id, or keywords specified for '{title}'")
                 continue
+
+            tmdb_ids = list(tmdb_ids)  # Convert back to list
 
             if not tmdb_ids:
-                logger.warning(f"No TMDB movies found for {title}")
+                logger.warning(f"No TMDB {content_type} found for {title}")
                 continue
 
-            logger.info(f"  Found {len(tmdb_ids)} movies on TMDB, matching to Plex...")
+            logger.info(f"  Found {len(tmdb_ids)} {content_type} on TMDB, matching to Plex...")
 
             # Match TMDB IDs to Plex items
             items = self._match_tmdb_ids_to_plex(tmdb_ids)

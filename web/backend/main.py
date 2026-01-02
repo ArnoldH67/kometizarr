@@ -259,6 +259,35 @@ async def get_collections(library_name: str):
         return {"error": str(e)}
 
 
+@app.get("/api/collections/{collection_title}/items")
+async def get_collection_items(collection_title: str, library_name: str):
+    """Get items in a specific collection"""
+    try:
+        from plexapi.server import PlexServer
+
+        plex_url = os.getenv('PLEX_URL')
+        plex_token = os.getenv('PLEX_TOKEN')
+
+        server = PlexServer(plex_url, plex_token)
+        library = server.library.section(library_name)
+
+        # Get the collection
+        collection = library.collection(collection_title)
+
+        # Get items in collection
+        items = []
+        for item in collection.items():
+            items.append({
+                "title": item.title,
+                "year": item.year if hasattr(item, 'year') else None,
+                "rating": round(item.rating, 1) if hasattr(item, 'rating') and item.rating else None
+            })
+
+        return {"items": items}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 class DecadeCollectionRequest(BaseModel):
     library_name: str
     decades: List[Dict]  # [{"title": "1980s Movies", "start": 1980, "end": 1989}, ...]
