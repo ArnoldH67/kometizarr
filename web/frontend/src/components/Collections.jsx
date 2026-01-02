@@ -131,6 +131,31 @@ function Collections({ selectedLibrary }) {
     )
   }
 
+  const deleteCollection = async (collectionTitle) => {
+    if (!selectedLibrary) return
+
+    if (!confirm(`Delete collection "${collectionTitle}"? This cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/collections/${encodeURIComponent(collectionTitle)}?library_name=${selectedLibrary.name}`, {
+        method: 'DELETE'
+      })
+
+      const data = await res.json()
+      if (data.status === 'success') {
+        alert(`Deleted collection: ${collectionTitle}`)
+        fetchCollections()
+      } else {
+        alert(`Error: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Failed to delete collection:', error)
+      alert('Failed to delete collection')
+    }
+  }
+
   const createKeywordCollections = async () => {
     if (!selectedLibrary) return
 
@@ -176,7 +201,11 @@ function Collections({ selectedLibrary }) {
 
       const data = await res.json()
       if (data.status === 'success') {
-        alert(`Created ${data.created} keyword collections!`)
+        if (data.created === 0) {
+          alert('0 collections created - all already exist')
+        } else {
+          alert(`Created ${data.created} keyword collection${data.created > 1 ? 's' : ''}!`)
+        }
         fetchCollections()
       } else {
         alert(`Error: ${data.error}`)
@@ -255,9 +284,9 @@ function Collections({ selectedLibrary }) {
             {collections.map((collection) => (
               <div
                 key={collection.title}
-                className="bg-gray-900 rounded-lg p-4 border border-gray-700"
+                className="bg-gray-900 rounded-lg p-4 border border-gray-700 relative group"
               >
-                <div className="font-semibold text-white">{collection.title}</div>
+                <div className="font-semibold text-white pr-8">{collection.title}</div>
                 <div className="text-sm text-gray-400 mt-1">
                   {collection.count} items
                 </div>
@@ -266,6 +295,14 @@ function Collections({ selectedLibrary }) {
                     {collection.summary}
                   </div>
                 )}
+                {/* Delete button - appears on hover */}
+                <button
+                  onClick={() => deleteCollection(collection.title)}
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded"
+                  title="Delete collection"
+                >
+                  ✕
+                </button>
               </div>
             ))}
           </div>

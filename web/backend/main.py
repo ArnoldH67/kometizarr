@@ -341,6 +341,29 @@ async def create_keyword_collections(request: KeywordCollectionRequest):
         return {"error": str(e)}
 
 
+@app.delete("/api/collections/{collection_title}")
+async def delete_collection(collection_title: str, library_name: str):
+    """Delete a collection"""
+    try:
+        from plexapi.server import PlexServer
+
+        plex_url = os.getenv('PLEX_URL')
+        plex_token = os.getenv('PLEX_TOKEN')
+
+        server = PlexServer(plex_url, plex_token)
+        library = server.library.section(library_name)
+
+        # Get the collection
+        collection = library.collection(collection_title)
+
+        # Delete it
+        collection.delete()
+
+        return {"status": "success", "message": f"Deleted collection: {collection_title}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
