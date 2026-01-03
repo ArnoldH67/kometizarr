@@ -362,6 +362,12 @@ manager.process_library()  # Preview without applying
 - [x] **Modal-based creation** - Select which collections to create (no auto-duplication)
 
 ### Planned 🚧
+- [ ] **Cancel/Stop Button** - Ability to abort running overlay processing ⚠️ HIGH PRIORITY
+  - Stop button in Web UI during active processing
+  - Gracefully terminate backend processing loop
+  - Clean up partial work (don't leave half-processed items)
+  - Confirm dialog to prevent accidental cancellation
+  - Resume from where it stopped (optional)
 - [ ] **Multi-server support** - Add/remove Plex servers from Web UI
   - Network discovery for Plex servers
   - OAuth authentication flow (no manual token setup)
