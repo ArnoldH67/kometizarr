@@ -47,7 +47,7 @@ function ProcessingProgress({ onComplete, progressData, setProgressData }) {
   if (!progressData) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Connecting...</div>
+        <div className="text-gray-400">Connecting... This may take a minute.</div>
       </div>
     )
   }

@@ -14,7 +14,13 @@ function App() {
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-white">
+          <h1
+            className="text-3xl font-bold text-white cursor-pointer hover:text-blue-400 transition-colors"
+            onClick={() => {
+              setProcessing(false)
+              setActiveTab('overlays')
+            }}
+          >
             🎬 Kometizarr
           </h1>
           <p className="text-gray-400 mt-1">
