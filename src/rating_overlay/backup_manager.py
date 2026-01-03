@@ -238,6 +238,14 @@ class PosterBackupManager:
         try:
             plex_item.uploadPoster(filepath=str(original_path))
             logger.info(f"✓ Restored original poster: {item_title}")
+
+            # Delete the overlay file so has_overlay() returns False
+            backup_path = self._get_backup_path(library_name, item_title)
+            overlay_path = backup_path / 'poster_overlay.jpg'
+            if overlay_path.exists():
+                overlay_path.unlink()
+                logger.debug(f"Cleaned up overlay backup: {overlay_path}")
+
             return True
 
         except Exception as e:

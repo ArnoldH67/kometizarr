@@ -18,8 +18,8 @@ function ProcessingProgress({ onComplete, progressData, setProgressData }) {
       const data = JSON.parse(event.data)
       setProgressData(data)
 
-      // Auto-complete when processing finishes
-      if (data.is_processing === false && data.progress > 0) {
+      // Auto-complete when processing or restoring finishes
+      if ((data.is_processing === false || data.is_restoring === false) && data.progress > 0) {
         setTimeout(() => {
           onComplete()
         }, 2000) // Show final stats for 2 seconds
@@ -52,12 +52,17 @@ function ProcessingProgress({ onComplete, progressData, setProgressData }) {
     )
   }
 
+  // Detect if we're in restore mode
+  const isRestoring = progressData.is_restoring !== undefined
+  const isActive = isRestoring ? progressData.is_restoring : progressData.is_processing
+  const successCount = isRestoring ? (progressData.restored || 0) : (progressData.success || 0)
+
   const progressPercent = progressData.total > 0
     ? Math.round((progressData.progress / progressData.total) * 100)
     : 0
 
   const successRate = progressData.progress > 0
-    ? Math.round((progressData.success / progressData.progress) * 100)
+    ? Math.round((successCount / progressData.progress) * 100)
     : 0
 
   return (
@@ -66,12 +71,12 @@ function ProcessingProgress({ onComplete, progressData, setProgressData }) {
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold">
-            Processing {progressData.current_library}
+            {isRestoring ? 'Restoring' : 'Processing'} {progressData.current_library}
           </h2>
-          {progressData.is_processing && (
+          {isActive && (
             <span className="flex items-center text-blue-400">
               <span className="animate-pulse mr-2">●</span>
-              Processing...
+              {isRestoring ? 'Restoring...' : 'Processing...'}
             </span>
           )}
         </div>
@@ -102,14 +107,16 @@ function ProcessingProgress({ onComplete, progressData, setProgressData }) {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Success */}
+        {/* Success / Restored */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <div className="text-gray-400 text-sm mb-1">✅ Success</div>
+          <div className="text-gray-400 text-sm mb-1">
+            {isRestoring ? '🔄 Restored' : '✅ Success'}
+          </div>
           <div className="text-3xl font-bold text-green-400">
-            {progressData.success}
+            {successCount}
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            {successRate}% success rate
+            {successRate}% {isRestoring ? 'restored' : 'success'} rate
           </div>
         </div>
 
@@ -143,24 +150,29 @@ function ProcessingProgress({ onComplete, progressData, setProgressData }) {
         <div className="flex items-start">
           <div className="text-blue-400 mr-3">ℹ️</div>
           <div>
-            <div className="font-semibold text-blue-300 mb-1">Processing in progress</div>
+            <div className="font-semibold text-blue-300 mb-1">
+              {isRestoring ? 'Restore in progress' : 'Processing in progress'}
+            </div>
             <div className="text-sm text-gray-400">
-              Multi-source rating overlays are being applied to your Plex library.
-              This page will update in real-time as items are processed.
+              {isRestoring
+                ? 'Original posters are being restored from backups. This page will update in real-time as items are restored.'
+                : 'Multi-source rating overlays are being applied to your Plex library. This page will update in real-time as items are processed.'}
             </div>
           </div>
         </div>
       </div>
 
       {/* Completion Message */}
-      {!progressData.is_processing && progressData.progress > 0 && (
+      {!isActive && progressData.progress > 0 && (
         <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-6 text-center">
           <div className="text-4xl mb-3">🎉</div>
           <div className="text-2xl font-bold text-green-400 mb-2">
-            Processing Complete!
+            {isRestoring ? 'Restore Complete!' : 'Processing Complete!'}
           </div>
           <div className="text-gray-400">
-            Successfully processed {progressData.success} out of {progressData.total} items
+            {isRestoring
+              ? `Successfully restored ${successCount} out of ${progressData.total} items`
+              : `Successfully processed ${successCount} out of ${progressData.total} items`}
           </div>
         </div>
       )}

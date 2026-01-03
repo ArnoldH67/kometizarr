@@ -43,6 +43,18 @@ processing_state = {
     "current_item": None
 }
 
+# Restore state
+restore_state = {
+    "is_restoring": False,
+    "current_library": None,
+    "progress": 0,
+    "total": 0,
+    "restored": 0,
+    "failed": 0,
+    "skipped": 0,
+    "current_item": None
+}
+
 
 class ProcessRequest(BaseModel):
     library_name: str
@@ -104,14 +116,15 @@ async def get_library_stats(library_name: str):
         server = PlexServer(plex_url, plex_token)
         library = server.library.section(library_name)
 
-        all_items = library.all()
-        total = len(all_items)
+        # Use totalSize for fast count instead of fetching all items
+        total = library.totalSize
 
-        # Check how many have backups (processed)
+        # Check how many have backups (processed) - use fast glob count
         backup_dir = f"/backups/{library_name}"
         processed = 0
         if os.path.exists(backup_dir):
-            processed = len(os.listdir(backup_dir))
+            import glob
+            processed = len(glob.glob(f"{backup_dir}/*"))
 
         success_rate = (processed / total * 100) if total > 0 else 0
 
@@ -141,8 +154,33 @@ async def start_processing(request: ProcessRequest):
 
 @app.post("/api/restore")
 async def restore_originals(request: ProcessRequest):
-    """Restore original posters from backups"""
+    """Start restoring original posters from backups"""
+    global restore_state
+
+    if restore_state["is_restoring"]:
+        return {"error": "Restore already in progress"}
+
+    # Start background task
+    asyncio.create_task(restore_library_background(request))
+
+    return {"status": "started", "library": request.library_name}
+
+
+async def restore_library_background(request: ProcessRequest):
+    """Background task for restoring library"""
+    global restore_state
+
     try:
+        # Reset restore state for new run
+        restore_state["is_restoring"] = True
+        restore_state["current_library"] = request.library_name
+        restore_state["progress"] = 0
+        restore_state["total"] = 0
+        restore_state["restored"] = 0
+        restore_state["failed"] = 0
+        restore_state["skipped"] = 0
+        restore_state["current_item"] = None
+
         from plexapi.server import PlexServer
         from src.rating_overlay.backup_manager import PosterBackupManager
 
@@ -159,30 +197,39 @@ async def restore_originals(request: ProcessRequest):
         if request.limit:
             all_items = all_items[:request.limit]
 
-        restored = 0
-        failed = 0
-        skipped = 0
+        restore_state["total"] = len(all_items)
 
-        for item in all_items:
-            if backup_manager.has_backup(request.library_name, item.title):
-                if backup_manager.restore_original(request.library_name, item.title, item):
-                    restored += 1
-                else:
-                    failed += 1
+        # Restore each item
+        for i, item in enumerate(all_items, 1):
+            restore_state["progress"] = i
+            restore_state["current_item"] = item.title
+
+            # Skip if no backup exists
+            if not backup_manager.has_backup(request.library_name, item.title):
+                restore_state["skipped"] += 1
+            # Skip if already showing original (no overlay applied)
+            elif not backup_manager.has_overlay(request.library_name, item.title):
+                restore_state["skipped"] += 1
+            # Has backup AND has overlay, proceed with restore
             else:
-                skipped += 1
+                if backup_manager.restore_original(request.library_name, item.title, item):
+                    restore_state["restored"] += 1
+                else:
+                    restore_state["failed"] += 1
 
-        return {
-            "status": "success",
-            "library": request.library_name,
-            "total": len(all_items),
-            "restored": restored,
-            "failed": failed,
-            "skipped": skipped
-        }
+            # Broadcast progress to all WebSocket connections
+            await broadcast_restore_progress()
+
+            # Rate limiting
+            await asyncio.sleep(0.1)
+
+        restore_state["is_restoring"] = False
+        await broadcast_restore_progress()  # Final update
 
     except Exception as e:
-        return {"error": str(e)}
+        restore_state["is_restoring"] = False
+        restore_state["error"] = str(e)
+        await broadcast_restore_progress()
 
 
 async def process_library_background(request: ProcessRequest):
@@ -190,8 +237,15 @@ async def process_library_background(request: ProcessRequest):
     global processing_state
 
     try:
+        # Reset processing state for new run
         processing_state["is_processing"] = True
         processing_state["current_library"] = request.library_name
+        processing_state["progress"] = 0
+        processing_state["total"] = 0
+        processing_state["success"] = 0
+        processing_state["failed"] = 0
+        processing_state["skipped"] = 0
+        processing_state["current_item"] = None
 
         # Initialize manager
         manager = PlexPosterManager(
@@ -277,6 +331,21 @@ async def broadcast_progress():
             await connection.send_json(processing_state)
         except:
             active_connections.remove(connection)
+
+
+async def broadcast_restore_progress():
+    """Broadcast restore progress to all connected WebSocket clients"""
+    for connection in active_connections:
+        try:
+            await connection.send_json(restore_state)
+        except:
+            active_connections.remove(connection)
+
+
+@app.get("/api/restore/status")
+async def get_restore_status():
+    """Get current restore status"""
+    return restore_state
 
 
 # Collection Management Endpoints

@@ -7,7 +7,6 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
   const [loading, setLoading] = useState(true)
   const [position, setPosition] = useState('northwest')
   const [force, setForce] = useState(false)
-  const [restoringOriginals, setRestoringOriginals] = useState(false)
 
   useEffect(() => {
     fetchLibraries()
@@ -79,8 +78,6 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
       return
     }
 
-    setRestoringOriginals(true)
-
     try {
       const res = await fetch('/api/restore', {
         method: 'POST',
@@ -91,17 +88,14 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
       })
 
       const data = await res.json()
-      if (data.status === 'success') {
-        alert(`Restored ${data.restored} posters, ${data.failed} failed, ${data.skipped} skipped (no backup)`)
-        fetchStats(selectedLibrary.name)
-      } else {
+      if (data.status === 'started') {
+        onStartProcessing() // Use same callback to show progress view
+      } else if (data.error) {
         alert(`Error: ${data.error}`)
       }
     } catch (error) {
       console.error('Failed to restore originals:', error)
       alert('Failed to restore originals')
-    } finally {
-      setRestoringOriginals(false)
     }
   }
 
@@ -207,14 +201,14 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={restoreOriginals}
-              disabled={!selectedLibrary || restoringOriginals}
+              disabled={!selectedLibrary}
               className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition"
             >
-              {restoringOriginals ? '⏳ Restoring...' : `🔄 Restore ${selectedLibrary?.name}`}
+              🔄 Restore {selectedLibrary?.name}
             </button>
             <button
               onClick={startProcessing}
-              disabled={!selectedLibrary || restoringOriginals}
+              disabled={!selectedLibrary}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition"
             >
               ▶️ Process {selectedLibrary?.name}
