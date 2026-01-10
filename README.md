@@ -72,6 +72,48 @@ cp .env.example .env
 docker-compose up -d
 ```
 
+<details>
+<summary>📄 View docker-compose.yml</summary>
+
+```yaml
+services:
+  backend:
+    build: ./web/backend
+    container_name: kometizarr-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app/kometizarr  # Mount entire project
+      - ./data/backups:/backups  # Poster backups (PERSISTENT - survives reboots)
+      - ./data/temp:/temp  # Temp processing
+    environment:
+      - PLEX_URL=${PLEX_URL:-http://192.168.1.20:32400}
+      - PLEX_TOKEN=${PLEX_TOKEN}
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - OMDB_API_KEY=${OMDB_API_KEY}
+      - MDBLIST_API_KEY=${MDBLIST_API_KEY}
+    restart: unless-stopped
+    networks:
+      - kometizarr
+
+  frontend:
+    build: ./web/frontend
+    container_name: kometizarr-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - kometizarr
+
+networks:
+  kometizarr:
+    driver: bridge
+```
+
+</details>
+
 Then open `http://localhost:3001` in your browser! 🎉
 
 #### Option B: Terraform (Infrastructure as Code)
@@ -375,8 +417,17 @@ manager.process_library()  # Preview without applying
   - Auto-discover libraries from selected server
   - Switch between servers without editing .env
   - Save server configurations in database
+- [ ] **Scheduled automatic processing** - Set-and-forget automation for rating overlays
+  - Cron-style scheduling (daily, weekly, custom intervals)
+  - Sequential library processing (Movies → TV Shows automatically)
+  - Per-library schedules (e.g., TV shows every Sunday, movies every Wednesday)
+  - Default: all selected libraries run back-to-back on your chosen schedule
+  - Keeps ratings fresh as new content gets rated and RT scores change
+- [ ] **unRAID Community Applications** - Official unRAID template for one-click installation
+  - Easier deployment for unRAID users
+  - Auto-updates from Community Applications store
+  - Releasing after initial stabilization period with early adopters
 - [ ] Per-episode ratings for TV shows
-- [ ] Scheduled updates (refresh ratings periodically)
 - [ ] Custom badge themes
 - [ ] Integration with Tautulli for viewing stats
 - [ ] Genre-based smart collections
