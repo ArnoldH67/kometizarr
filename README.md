@@ -173,7 +173,7 @@ manager = PlexPosterManager(
     tmdb_api_key=config['apis']['tmdb']['api_key'],
     omdb_api_key=config['apis']['omdb']['api_key'],
     mdblist_api_key=config['apis']['mdblist']['api_key'],
-    backup_dir='/tmp/kometizarr_backups'
+    backup_dir='./data/kometizarr_backups'
 )
 
 # Process all movies (skips already processed)

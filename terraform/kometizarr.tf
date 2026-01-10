@@ -34,12 +34,12 @@ resource "docker_container" "kometizarr_backend" {
   }
 
   volumes {
-    host_path      = "/tmp/kometizarr_backups"
+    host_path      = "/home/pieter/ai/kometizarr/data/backups"
     container_path = "/backups"
   }
 
   volumes {
-    host_path      = "/tmp/kometizarr_temp"
+    host_path      = "/home/pieter/ai/kometizarr/data/temp"
     container_path = "/temp"
   }
 
