@@ -83,3 +83,5 @@ web/frontend/.vite/
 
 # Kometizarr data directory (backups, temp files)
 data/
+landing-page/
+restore_original_posters.py

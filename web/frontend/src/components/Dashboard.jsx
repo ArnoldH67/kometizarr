@@ -205,7 +205,7 @@ function Dashboard({ onStartProcessing, onLibrarySelect }) {
               id="force-checkbox"
             />
             <label htmlFor="force-checkbox" className="text-sm">
-              Force reprocess (re-applies overlays with fresh ratings using backed up originals)
+              Force reprocess (use when updating ratings or changing which sources to display)
             </label>
           </div>
           {force && (
