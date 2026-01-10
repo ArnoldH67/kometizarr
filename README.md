@@ -318,9 +318,10 @@ manager.process_library(limit=10)
 
 ### Custom Backup Directory
 ```python
+# IMPORTANT: Use a persistent location, NOT /tmp!
 manager = PlexPosterManager(
     ...,
-    backup_dir='/mnt/nas/plex_backups'
+    backup_dir='/home/user/kometizarr/backups'  # Or any persistent path
 )
 ```
 
@@ -328,6 +329,8 @@ manager = PlexPosterManager(
 
 ### Automatic Backups
 - Original posters saved to `backup_dir/LibraryName/MovieTitle/`
+- **Web UI/Docker:** Backups stored in `./data/backups/` (persistent across reboots)
+- **CLI:** Default is `/tmp/kometizarr_backups` - **⚠️ WARNING:** This gets cleared on reboot! Use a persistent location for production
 - Metadata stored (TMDB ID, IMDb ID, ratings)
 - Overlay version also saved for reference
 

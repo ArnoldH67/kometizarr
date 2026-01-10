@@ -80,3 +80,6 @@ terraform/*.auto.tfvars
 web/frontend/node_modules/
 web/frontend/dist/
 web/frontend/.vite/
+
+# Kometizarr data directory (backups, temp files)
+data/
