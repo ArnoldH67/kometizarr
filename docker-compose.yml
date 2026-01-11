@@ -3,7 +3,7 @@ services:
     build: ./web/backend
     container_name: kometizarr-backend
     ports:
-      - "8000:8000"
+      - "8005:8000"
     volumes:
       - ./:/app/kometizarr  # Mount entire project
       - ./web/backend:/app/backend  # Mount backend source for hot-reload (no rebuild needed)
@@ -33,3 +33,4 @@ services:
 networks:
   kometizarr:
     driver: bridge
+
